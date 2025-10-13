@@ -236,12 +236,15 @@ export default function Dashboard() {
                           </Button>
                         )}
                         <Button
+                          asChild
                           variant="default"
                           size="sm"
                           data-testid={`button-download-cert-${cert.id}`}
                         >
-                          <Download className="mr-2 h-4 w-4" />
-                          Certificate
+                          <a href={`/api/certificates/${cert.id}.pdf`} download>
+                            <Download className="mr-2 h-4 w-4" />
+                            Certificate
+                          </a>
                         </Button>
                       </div>
                     </div>

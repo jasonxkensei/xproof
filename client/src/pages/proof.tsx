@@ -204,9 +204,11 @@ export default function ProofPage() {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="default" size="lg" data-testid="button-download-certificate">
-            <Download className="mr-2 h-5 w-5" />
-            Download Certificate
+          <Button asChild variant="default" size="lg" data-testid="button-download-certificate">
+            <a href={`/api/certificates/${certification.id}.pdf`} download>
+              <Download className="mr-2 h-5 w-5" />
+              Download Certificate
+            </a>
           </Button>
           <Button asChild variant="outline" size="lg" data-testid="button-certify-yours">
             <a href="/">Certify Your Files</a>

@@ -7,6 +7,7 @@ import { certifications, users, SUBSCRIPTION_TIERS } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import Stripe from "stripe";
+import { generateCertificatePDF } from "./certificateGenerator";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("Missing STRIPE_SECRET_KEY environment variable");
@@ -33,13 +34,6 @@ async function recordOnBlockchain(fileHash: string): Promise<{
     transactionHash,
     transactionUrl,
   };
-}
-
-// Certificate generation (placeholder)
-async function generateCertificate(certificationId: string): Promise<string> {
-  // TODO: Implement PDF certificate generation with QR code
-  // For now, return a placeholder URL
-  return `/api/certificates/${certificationId}.pdf`;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -143,13 +137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .returning();
 
-      // Generate certificate
-      const certificateUrl = await generateCertificate(certification.id);
-      
-      await db
-        .update(certifications)
-        .set({ certificateUrl })
-        .where(eq(certifications.id, certification.id));
+      // Certificate will be generated on-demand when downloaded
+      const certificateUrl = `/api/certificates/${certification.id}.pdf`;
 
       // Increment monthly usage
       await db
@@ -208,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Download certificate (placeholder)
+  // Download certificate
   app.get("/api/certificates/:id.pdf", async (req, res) => {
     try {
       const certId = req.params.id;
@@ -222,11 +211,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Certificate not found" });
       }
 
-      // TODO: Generate and serve PDF
-      res.status(501).json({ message: "PDF generation not yet implemented" });
+      // Get user to determine subscription tier
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, certification.userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generate PDF
+      const pdfBuffer = await generateCertificatePDF({
+        certification,
+        subscriptionTier: user.subscriptionTier || 'free',
+        companyName: undefined, // TODO: Add to user schema for Business tier
+        companyLogoUrl: undefined,
+      });
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="certificate-${certification.id}.pdf"`);
+      res.send(pdfBuffer);
     } catch (error) {
-      console.error("Error downloading certificate:", error);
-      res.status(500).json({ message: "Failed to download certificate" });
+      console.error("Error generating certificate:", error);
+      res.status(500).json({ message: "Failed to generate certificate" });
     }
   });
 
