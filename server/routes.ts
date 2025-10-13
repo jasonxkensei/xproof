@@ -9,11 +9,12 @@ import { z } from "zod";
 import Stripe from "stripe";
 import { generateCertificatePDF } from "./certificateGenerator";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing STRIPE_SECRET_KEY environment variable");
+const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY;
+if (!stripeSecretKey) {
+  throw new Error("Missing STRIPE_SECRET_KEY or TESTING_STRIPE_SECRET_KEY environment variable");
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2025-09-30.clover",
 });
 
@@ -259,6 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let customerId = user.stripeCustomerId;
       
       if (!customerId) {
+        console.log('Creating Stripe customer for user:', userId);
         const customer = await stripe.customers.create({
           email: user.email || undefined,
           metadata: {
